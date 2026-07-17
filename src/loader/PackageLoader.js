@@ -1,7 +1,8 @@
 async function packageLoader({ params }) {
-  const [latestRes, downloadsRes] = await Promise.all([
+  const [latestRes, downloadsRes, rootRes] = await Promise.all([
     fetch(`https://registry.npmjs.org/${params.pkgName}/latest`),
     fetch(`https://api.npmjs.org/downloads/point/last-week/${params.pkgName}`),
+    fetch(`https://registry.npmjs.org/${params.pkgName}`),
   ]);
 
   if (!latestRes.ok) {
@@ -14,10 +15,16 @@ async function packageLoader({ params }) {
       status: downloadsRes.status,
       statusText: downloadsRes.statusText,
     })
+  } else if (!rootRes.ok) {
+    throw new Response(null, {
+      status: rootRes.status,
+      statusText: rootRes.statusText,
+    })
   }
 
   const latestData = await latestRes.json();
   const downloadData = await downloadsRes.json();
+  const rootData = await rootRes.json();
 
   return {
     name: latestData.name,
@@ -25,11 +32,11 @@ async function packageLoader({ params }) {
     version: latestData.version,
     keywords: latestData.keywords ?? [],
     homepage: latestData.homepage ?? null,
-    repository: rootData.repository?.url ?? null,
     npmV: latestData._npmVersion ?? null,
     nodeV: latestData._nodeVersion ?? null,
     dependencies: latestData.dependencies ?? {},
     weeklyDownloads: downloadData.downloads,
+    repository: rootData.repository?.url ?? null,
   };
 }
 
